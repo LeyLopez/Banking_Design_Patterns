@@ -1,0 +1,118 @@
+@startuml
+ title Sistema bancario simplificado - clases del dominio
+
+ skinparam classAttributeIconSize 0
+ skinparam monochrome false
+ skinparam packageStyle rectangle
+ skinparam shadowing false
+
+ package "dominio" {
+   class Cuenta {
+     +id: str
+     +titular: str
+     +saldo: Decimal
+     +limite_diario_transferencia: Decimal
+     +transferido_hoy: Decimal
+     +historial: list[dict]
+   }
+
+   class CuentaRepository {
+     -_cuentas: dict[str, Cuenta]
+     +guardar(cuenta: Cuenta): None
+     +obtener(cuenta_id: str): Cuenta
+   }
+
+   abstract class ComisionStrategy {
+     {abstract} +calcular(monto: Decimal): Decimal
+   }
+
+   abstract class ProveedorExternoPort {
+     {abstract} +procesar(monto: Decimal): bool
+   }
+
+   abstract class EstadoTransaccion {
+     {abstract} +nombre: str
+     {abstract} +transicionar(evento: str): EstadoTransaccion
+   }
+
+   abstract class ObservadorTransaccion {
+     {abstract} +actualizar(transaccion: Any): None
+   }
+
+   class EstadoCreada
+   class EstadoAutorizada
+   class EstadoProcesada
+   class EstadoCompletada
+   class EstadoRechazada
+   class EstadoReversada
+   class TransicionInvalidaError <<exception>>
+ }
+
+ package "aplicacion" {
+   class BancoFacade {
+     -_repository: CuentaRepository
+     -_estrategias: dict[str, ComisionStrategy]
+     -_proveedores: dict[str, ProveedorExternoPort]
+     -_sujeto: SujetoTransaccion
+     +depositar(cuenta_id, monto, canal): dict
+     +retirar(cuenta_id, monto): dict
+     +transferir(origen_id, destino_id, monto): dict
+     +reversar(transaccion_id): dict
+   }
+
+   class ComisionTarjeta
+   class ComisionPSE
+   class ComisionBilletera
+ }
+
+ package "infraestructura" {
+   class TarjetaAdapter <<fake>>
+   class PSEAdapter <<fake>>
+   class BilleteraAdapter <<fake>>
+
+   class SujetoTransaccion {
+     -_observadores: list[ObservadorTransaccion]
+     +suscribir(observador): None
+     +desuscribir(observador): None
+     +cambiar_estado(transaccion, nuevo_estado): None
+     +notificar(transaccion): None
+   }
+
+   class NotificadorConsola
+   class AuditoriaLogger
+ }
+
+ CuentaRepository "1" o-- "0..*" Cuenta : almacena
+ BancoFacade --> CuentaRepository : coordina
+ BancoFacade --> ComisionStrategy : selecciona por canal
+ BancoFacade --> ProveedorExternoPort : procesa con puerto
+ BancoFacade --> EstadoTransaccion : avanza estados
+ BancoFacade --> SujetoTransaccion : publica cambios
+
+ ComisionTarjeta ..|> ComisionStrategy
+ ComisionPSE ..|> ComisionStrategy
+ ComisionBilletera ..|> ComisionStrategy
+ TarjetaAdapter ..|> ProveedorExternoPort
+ PSEAdapter ..|> ProveedorExternoPort
+ BilleteraAdapter ..|> ProveedorExternoPort
+
+ EstadoCreada ..|> EstadoTransaccion
+ EstadoAutorizada ..|> EstadoTransaccion
+ EstadoProcesada ..|> EstadoTransaccion
+ EstadoCompletada ..|> EstadoTransaccion
+ EstadoRechazada ..|> EstadoTransaccion
+ EstadoReversada ..|> EstadoTransaccion
+
+ NotificadorConsola ..|> ObservadorTransaccion
+ AuditoriaLogger ..|> ObservadorTransaccion
+ SujetoTransaccion o-- ObservadorTransaccion : notifica
+ EstadoTransaccion ..> TransicionInvalidaError : lanza
+
+ EstadoCreada --> EstadoAutorizada : autorizar
+ EstadoCreada --> EstadoRechazada : rechazar
+ EstadoAutorizada --> EstadoProcesada : procesar
+ EstadoAutorizada --> EstadoRechazada : rechazar
+ EstadoProcesada --> EstadoCompletada : completar
+ EstadoProcesada --> EstadoReversada : reversar
+ EstadoCompletada --> EstadoReversada : reversar
+@enduml

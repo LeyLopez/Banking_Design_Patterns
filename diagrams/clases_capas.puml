@@ -1,0 +1,74 @@
+@startuml
+ title Sistema bancario simplificado - arquitectura por capas
+
+ skinparam componentStyle rectangle
+ skinparam packageStyle rectangle
+ skinparam shadowing false
+
+ package "api" {
+   class FastAPI <<framework>>
+   class DepositoRequest <<Pydantic DTO>>
+   class RetiroRequest <<Pydantic DTO>>
+   class TransferenciaRequest <<Pydantic DTO>>
+   class ReversoRequest <<Pydantic DTO>>
+   class OperacionResponse <<Pydantic DTO>>
+ }
+
+ package "aplicacion" {
+   class BancoFacade <<Facade>>
+ }
+
+ package "dominio" {
+   class Cuenta
+   class CuentaRepository
+   interface ComisionStrategy <<Strategy>>
+   interface ProveedorExternoPort <<Adapter port>>
+   interface EstadoTransaccion <<State>>
+   interface ObservadorTransaccion <<Observer>>
+ }
+
+ package "infraestructura" {
+   class ComisionTarjeta
+   class ComisionPSE
+   class ComisionBilletera
+   class TarjetaAdapter <<fake>>
+   class PSEAdapter <<fake>>
+   class BilleteraAdapter <<fake>>
+   class SujetoTransaccion
+   class NotificadorConsola
+   class AuditoriaLogger
+ }
+
+ FastAPI --> DepositoRequest : valida
+ FastAPI --> RetiroRequest : valida
+ FastAPI --> TransferenciaRequest : valida
+ FastAPI --> ReversoRequest : valida
+ FastAPI --> BancoFacade : delega
+ FastAPI --> OperacionResponse : serializa
+
+ BancoFacade --> CuentaRepository : inyecta
+ BancoFacade --> ComisionStrategy : usa
+ BancoFacade --> ProveedorExternoPort : usa
+ BancoFacade --> EstadoTransaccion : gestiona
+ BancoFacade --> SujetoTransaccion : notifica
+ CuentaRepository --> Cuenta : persiste en memoria
+
+ ComisionTarjeta ..|> ComisionStrategy
+ ComisionPSE ..|> ComisionStrategy
+ ComisionBilletera ..|> ComisionStrategy
+ TarjetaAdapter ..|> ProveedorExternoPort
+ PSEAdapter ..|> ProveedorExternoPort
+ BilleteraAdapter ..|> ProveedorExternoPort
+ SujetoTransaccion --> ObservadorTransaccion : publica
+ NotificadorConsola ..|> ObservadorTransaccion
+ AuditoriaLogger ..|> ObservadorTransaccion
+
+ note right of TarjetaAdapter
+   Proveedor externo simulado.
+   No realiza HTTP real.
+ end note
+
+ note bottom of CuentaRepository
+   Persistencia en memoria.
+ end note
+@enduml

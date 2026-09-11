@@ -1,0 +1,48 @@
+// Renderizar: dot -Tpng diagrams/secuencia_deposito_exitoso.dot -o diagrams/secuencia_deposito_exitoso.png
+digraph secuencia_deposito_exitoso {
+    graph [
+        label="Secuencia: deposito exitoso",
+        labelloc=t,
+        rankdir=TB,
+        nodesep=0.7,
+        ranksep=0.35,
+        splines=ortho
+    ];
+    node [shape=box, style="rounded,filled", fillcolor="#F4F7FB", color="#4A6072", fontname="Arial"];
+    edge [color="#536878", fontname="Arial", fontsize=9];
+
+    Cliente [label="Cliente", fillcolor="#EAF6EC"];
+    API [label="POST /depositar\nFastAPI"];
+    Schema [label="DepositoRequest\nPydantic"];
+    Facade [label="BancoFacade.depositar"];
+    Repo [label="CuentaRepository.obtener"];
+    Strategy [label="ComisionStrategy\nComisionTarjeta.calcular"];
+    Adapter [label="TarjetaAdapter.procesar\n(fake)"];
+    Cuenta [label="Cuenta.saldo\nactualizar saldo neto"];
+    Creada [label="EstadoCreada\n-> AUTORIZADA"];
+    Procesada [label="EstadoAutorizada\n-> PROCESADA\n-> COMPLETADA"];
+    Sujeto [label="SujetoTransaccion\ncambiar_estado / notificar"];
+    Consola [label="NotificadorConsola\nactualizar"];
+    Auditoria [label="AuditoriaLogger\nactualizar"];
+    Respuesta [label="OperacionResponse\nJSON 200", fillcolor="#EAF6EC"];
+
+    Cliente -> API [label="1. cuenta_id, monto, canal"];
+    API -> Schema [label="2. valida DTO"];
+    Schema -> Facade [label="3. delega"];
+    Facade -> Repo [label="4. obtiene cuenta"];
+    Repo -> Facade [label="5. Cuenta"];
+    Facade -> Strategy [label="6. calcula comision"];
+    Strategy -> Facade [label="7. Decimal"];
+    Facade -> Adapter [label="8. procesa monto"];
+    Adapter -> Facade [label="9. True"];
+    Facade -> Cuenta [label="10. saldo += monto - comision"];
+    Facade -> Creada [label="11. autorizar"];
+    Creada -> Sujeto [label="12. publica AUTORIZADA"];
+    Facade -> Procesada [label="13. procesar y completar"];
+    Procesada -> Sujeto [label="14. publica PROCESADA y COMPLETADA"];
+    Sujeto -> Consola [label="15. notifica"];
+    Sujeto -> Auditoria [label="16. registra"];
+    Facade -> API [label="17. transaccion"];
+    API -> Respuesta [label="18. serializa"];
+    Respuesta -> Cliente [label="19. HTTP 200"];
+}

@@ -1,0 +1,34 @@
+@startuml
+ title Secuencia UML - deposito exitoso
+ autonumber
+
+ actor Cliente
+ participant "API\nFastAPI" as API
+ participant "DepositoRequest\nPydantic" as DTO
+ participant "BancoFacade" as Facade
+ participant "CuentaRepository" as Repo
+ participant "ComisionTarjeta\nStrategy" as Strategy
+ participant "TarjetaAdapter\n(fake)" as Adapter
+ participant "Cuenta" as Cuenta
+ participant "SujetoTransaccion" as Sujeto
+ participant "NotificadorConsola" as Consola
+ participant "AuditoriaLogger" as Auditoria
+
+ Cliente -> API: POST /depositar
+ API -> DTO: validar cuenta_id, monto, canal
+ DTO --> API: request valido
+ API -> Facade: depositar(cuenta_id, monto, canal)
+ Facade -> Repo: obtener(cuenta_id)
+ Repo --> Facade: Cuenta
+ Facade -> Strategy: calcular(monto)
+ Strategy --> Facade: Decimal comision
+ Facade -> Adapter: procesar(monto)
+ Adapter --> Facade: True
+ Facade -> Cuenta: saldo += monto - comision
+ Facade -> Facade: autorizar, procesar, completar
+ Facade -> Sujeto: cambiar_estado(transaccion, estado)
+ Sujeto -> Consola: actualizar(transaccion)
+ Sujeto -> Auditoria: actualizar(transaccion)
+ Facade --> API: transaccion COMPLETADA
+ API --> Cliente: OperacionResponse / HTTP 200
+@enduml

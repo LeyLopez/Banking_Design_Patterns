@@ -1,0 +1,39 @@
+@startuml
+ title Secuencia UML - retiro rechazado por saldo insuficiente
+ autonumber
+
+ actor Cliente
+ participant "API\nFastAPI" as API
+ participant "RetiroRequest\nPydantic" as DTO
+ participant "BancoFacade" as Facade
+ participant "CuentaRepository" as Repo
+ participant "Cuenta" as Cuenta
+ participant "SujetoTransaccion" as Sujeto
+ participant "NotificadorConsola" as Consola
+ participant "AuditoriaLogger" as Auditoria
+
+ Cliente -> API: POST /retirar
+ API -> DTO: validar cuenta_id, monto
+ DTO --> API: request valido
+ API -> Facade: retirar(cuenta_id, monto)
+ Facade -> Repo: obtener(cuenta_id)
+ Repo --> Facade: Cuenta
+ Facade -> Cuenta: consultar saldo
+ alt saldo < monto
+   Facade -> Facade: transicionar(rechazar)
+   Facade -> Sujeto: cambiar_estado(transaccion, RECHAZADA)
+   Sujeto -> Consola: actualizar(transaccion)
+   Sujeto -> Auditoria: actualizar(transaccion)
+   note right of Cuenta
+     El saldo no cambia.
+     La transaccion se agrega al historial.
+   end note
+   Facade --> API: transaccion RECHAZADA
+   API --> Cliente: OperacionResponse / HTTP 200
+ else saldo suficiente
+   Facade -> Cuenta: saldo -= monto
+   Facade -> Facade: completar transaccion
+   Facade --> API: transaccion COMPLETADA
+   API --> Cliente: OperacionResponse / HTTP 200
+ end
+@enduml

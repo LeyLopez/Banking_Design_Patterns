@@ -1,0 +1,79 @@
+// Renderizar: dot -Tpng diagrams/clases_dominio.dot -o diagrams/clases_dominio.png
+digraph clases_dominio {
+    graph [
+        label="Sistema bancario simplificado - clases reales",
+        labelloc=t,
+        rankdir=LR,
+        splines=ortho,
+        nodesep=0.45,
+        ranksep=0.8
+    ];
+    node [shape=record, style="rounded,filled", fillcolor="#F4F7FB", color="#4A6072", fontname="Arial"];
+    edge [color="#536878", fontname="Arial", fontsize=9];
+
+    subgraph cluster_dominio {
+        label="dominio";
+        color="#9BB7D4";
+        Cuenta [label="{Cuenta|id: str\ltitular: str\lsaldo: Decimal\llimite_diario_transferencia: Decimal\ltransferido_hoy: Decimal\l|}"];
+        CuentaRepository [label="{CuentaRepository| - _cuentas\l|guardar(cuenta)\lobtener(cuenta_id)\l}"];
+        ComisionStrategy [label="{<<abstract>> ComisionStrategy|calcular(monto: Decimal): Decimal\l}", fillcolor="#E7F0FA"];
+        ProveedorExternoPort [label="{<<abstract>> ProveedorExternoPort|procesar(monto: Decimal): bool\l}", fillcolor="#E7F0FA"];
+        EstadoTransaccion [label="{<<abstract>> EstadoTransaccion|nombre: str\ltransicionar(evento): EstadoTransaccion\l}", fillcolor="#E7F0FA"];
+        ObservadorTransaccion [label="{<<abstract>> ObservadorTransaccion|actualizar(transaccion): None\l}", fillcolor="#E7F0FA"];
+        EstadoCreada [label="{EstadoCreada|nombre\ltransicionar(evento)\l}"];
+        EstadoAutorizada [label="{EstadoAutorizada|nombre\ltransicionar(evento)\l}"];
+        EstadoProcesada [label="{EstadoProcesada|nombre\ltransicionar(evento)\l}"];
+        EstadoCompletada [label="{EstadoCompletada|nombre\ltransicionar(evento)\l}"];
+        EstadoRechazada [label="{EstadoRechazada|nombre\ltransicionar(evento)\l}"];
+        EstadoReversada [label="{EstadoReversada|nombre\ltransicionar(evento)\l}"];
+        TransicionInvalidaError [label="{TransicionInvalidaError|Exception\l}", fillcolor="#FFF0F0"];
+    }
+
+    subgraph cluster_aplicacion {
+        label="aplicacion";
+        color="#B7D8C0";
+        BancoFacade [label="{BancoFacade| - _repository\l - _estrategias\l - _proveedores\l - _sujeto\l|depositar(...)\lretirar(...)\ltransferir(...)\lreversar(...)\l}", fillcolor="#EAF6EC"];
+        ComisionTarjeta [label="{ComisionTarjeta|calcular(monto)\l}"];
+        ComisionPSE [label="{ComisionPSE|calcular(monto)\l}"];
+        ComisionBilletera [label="{ComisionBilletera|calcular(monto)\l}"];
+    }
+
+    subgraph cluster_infraestructura {
+        label="infraestructura";
+        color="#D7C39B";
+        TarjetaAdapter [label="{TarjetaAdapter| - montos_procesados\l|procesar(monto)\l}"];
+        PSEAdapter [label="{PSEAdapter| - montos_procesados\l|procesar(monto)\l}"];
+        BilleteraAdapter [label="{BilleteraAdapter| - montos_procesados\l|procesar(monto)\l}"];
+        SujetoTransaccion [label="{SujetoTransaccion| - _observadores\l|suscribir(observador)\ldesuscribir(observador)\lcambiar_estado(...)\lnotificar(...)\l}"];
+        NotificadorConsola [label="{NotificadorConsola|actualizar(transaccion)\l}"];
+        AuditoriaLogger [label="{AuditoriaLogger| - logger\l|actualizar(transaccion)\l}"];
+    }
+
+    CuentaRepository -> Cuenta [label="almacena"];
+    BancoFacade -> CuentaRepository [label="coordina"];
+    BancoFacade -> ComisionStrategy [label="selecciona por registro"];
+    BancoFacade -> ProveedorExternoPort [label="usa por registro"];
+    BancoFacade -> EstadoTransaccion [label="avanza estados"];
+    BancoFacade -> SujetoTransaccion [label="publica cambios"];
+
+    ComisionTarjeta -> ComisionStrategy [arrowhead=empty, style=dashed];
+    ComisionPSE -> ComisionStrategy [arrowhead=empty, style=dashed];
+    ComisionBilletera -> ComisionStrategy [arrowhead=empty, style=dashed];
+    TarjetaAdapter -> ProveedorExternoPort [arrowhead=empty, style=dashed];
+    PSEAdapter -> ProveedorExternoPort [arrowhead=empty, style=dashed];
+    BilleteraAdapter -> ProveedorExternoPort [arrowhead=empty, style=dashed];
+    EstadoCreada -> EstadoTransaccion [arrowhead=empty, style=dashed];
+    EstadoAutorizada -> EstadoTransaccion [arrowhead=empty, style=dashed];
+    EstadoProcesada -> EstadoTransaccion [arrowhead=empty, style=dashed];
+    EstadoCompletada -> EstadoTransaccion [arrowhead=empty, style=dashed];
+    EstadoRechazada -> EstadoTransaccion [arrowhead=empty, style=dashed];
+    EstadoReversada -> EstadoTransaccion [arrowhead=empty, style=dashed];
+    NotificadorConsola -> ObservadorTransaccion [arrowhead=empty, style=dashed];
+    AuditoriaLogger -> ObservadorTransaccion [arrowhead=empty, style=dashed];
+    SujetoTransaccion -> ObservadorTransaccion [label="notifica"];
+    EstadoCreada -> EstadoAutorizada [label="autorizar", style=dotted];
+    EstadoAutorizada -> EstadoProcesada [label="procesar", style=dotted];
+    EstadoProcesada -> EstadoCompletada [label="completar", style=dotted];
+    EstadoCompletada -> EstadoReversada [label="reversar", style=dotted];
+    EstadoTransaccion -> TransicionInvalidaError [label="transicion invalida", style=dotted];
+}
