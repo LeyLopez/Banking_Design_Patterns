@@ -1,0 +1,10 @@
+digraph secuencia_retiro_rechazado {
+    rankdir=LR;
+    node [shape=box];
+    Cliente -> BancoFacade [label="retirar(cuenta, monto)"];
+    BancoFacade -> CuentaRepository [label="obtener cuenta"];
+    BancoFacade -> Cuenta [label="saldo insuficiente"];
+    BancoFacade -> EstadoRechazada [label="transicionar(rechazar)"];
+    BancoFacade -> SujetoTransaccion [label="notificar RECHAZADA"];
+    BancoFacade -> Cliente [label="operacion rechazada"];
+}
