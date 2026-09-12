@@ -47,6 +47,11 @@ class BancoFacade:
         self._sujeto = sujeto or SujetoTransaccion()
         self._transacciones: dict[str, dict[str, Any]] = {}
         self._siguiente_id = 1
+        self._reversores = {
+            "deposito": self._revertir_deposito,
+            "retiro": self._revertir_retiro,
+            "transferencia": self._revertir_transferencia,
+        }
 
     def depositar(
         self, cuenta_id: str, monto: Decimal, canal: str = "tarjeta"
@@ -158,16 +163,31 @@ class BancoFacade:
         origen: Cuenta,
         destino: Cuenta | None,
     ) -> None:
-        monto = transaccion["monto"]
-        comision = transaccion["comision"]
-        if transaccion["tipo"] == "deposito":
-            origen.saldo -= monto - comision
-        elif transaccion["tipo"] == "retiro":
-            origen.saldo += monto
-        elif transaccion["tipo"] == "transferencia" and destino is not None:
-            origen.saldo += monto
-            destino.saldo -= monto
-            origen.transferido_hoy -= monto
+        self._reversores[transaccion["tipo"]](transaccion, origen, destino)
+
+    @staticmethod
+    def _revertir_deposito(
+        transaccion: dict[str, Any], origen: Cuenta, destino: Cuenta | None
+    ) -> None:
+        del destino
+        origen.saldo -= transaccion["monto"] - transaccion["comision"]
+
+    @staticmethod
+    def _revertir_retiro(
+        transaccion: dict[str, Any], origen: Cuenta, destino: Cuenta | None
+    ) -> None:
+        del destino
+        origen.saldo += transaccion["monto"]
+
+    @staticmethod
+    def _revertir_transferencia(
+        transaccion: dict[str, Any], origen: Cuenta, destino: Cuenta | None
+    ) -> None:
+        if destino is None:
+            return
+        origen.saldo += transaccion["monto"]
+        destino.saldo -= transaccion["monto"]
+        origen.transferido_hoy -= transaccion["monto"]
 
 
 __all__ = ["BancoFacade"]

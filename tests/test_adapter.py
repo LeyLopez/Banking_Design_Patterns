@@ -5,8 +5,11 @@ import pytest
 from src.dominio.contratos import ProveedorExternoPort
 from src.infraestructura.proveedores import (
     BilleteraAdapter,
+    BilleteraProviderFake,
     PSEAdapter,
+    PSEProviderFake,
     TarjetaAdapter,
+    TarjetaProviderFake,
 )
 
 
@@ -38,3 +41,21 @@ def test_fake_puede_simular_fallo_del_proveedor():
 
     assert resultado is False
     assert isinstance(proveedor, ProveedorExternoPort)
+
+
+def test_adapter_traduce_la_operacion_del_proveedor_de_tarjeta():
+    proveedor = TarjetaProviderFake()
+    adapter = TarjetaAdapter(proveedor)
+
+    assert adapter.procesar(Decimal("12.50")) is True
+    assert proveedor.valores_cobrados == [Decimal("12.50")]
+
+
+def test_adapters_envuelven_interfaces_incompatibles():
+    pse = PSEProviderFake()
+    billetera = BilleteraProviderFake()
+
+    assert PSEAdapter(pse).procesar(Decimal("8.00")) is True
+    assert BilleteraAdapter(billetera).procesar(Decimal("9.00")) is True
+    assert pse.valores_procesados == [Decimal("8.00")]
+    assert billetera.valores_autorizados == [Decimal("9.00")]

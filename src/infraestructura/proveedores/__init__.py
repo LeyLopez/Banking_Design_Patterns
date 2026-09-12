@@ -1,5 +1,19 @@
 """Adapters fake para proveedores externos."""
 
-from .adapters import BilleteraAdapter, PSEAdapter, TarjetaAdapter
+from .adapters import (
+	BilleteraAdapter,
+	BilleteraProviderFake,
+	PSEAdapter,
+	PSEProviderFake,
+	TarjetaAdapter,
+	TarjetaProviderFake,
+)
 
-__all__ = ["TarjetaAdapter", "PSEAdapter", "BilleteraAdapter"]
+__all__ = [
+	"BilleteraAdapter",
+	"BilleteraProviderFake",
+	"PSEAdapter",
+	"PSEProviderFake",
+	"TarjetaAdapter",
+	"TarjetaProviderFake",
+]
